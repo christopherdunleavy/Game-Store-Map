@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="css/styles.css">
+  </head>
+  <body>
+    <div class="container">
+      <div class="options-box">
+        <h1>Find Your New NYC Home</h1>
+        <div class="search-div">
+          <input type="text" placeholder="Search" data-bind="textInput: filter">
+        </div>
+
+        <ul data-bind="foreach: filteredLocationList">
+          <li>
+            <!-- <a href="#" data-bind="click: $parent.openWindow, text: name"></a> -->
+            <a href="#" data-bind="click: $parent.openWindow, text: title"></a>
+          </li>
+        </ul>
+        <br>
+      </div>
+      <div id="map"></div>
+    </div>
+    <script src="js/model.js"></script>
+    <script src="js/app.js"></script>
+    <script type='text/javascript' src='js/knockout-3.4.2.js'></script>
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyANDQaT9PoSGp_ahuHK4x2WgnueJSCrtvk&v=3&callback=initMap">
+    </script>
+
+  </body>
+</html>
