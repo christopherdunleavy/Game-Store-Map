@@ -98,11 +98,13 @@ function ViewModel() {
   self.filter = ko.observable("");
   self.locationList = ko.observableArray([]);
   
+  //populating locationList with locations from model.js
   locations.forEach(function(location){
     self.locationList.push(new Location(location));
   });
 
-  var largeInfowindow = new google.maps.InfoWindow();
+  //one infoWindow is used for handling all game stores
+  var infoWindow = new google.maps.InfoWindow();
 
   // Style the markers a bit. This will be our listing marker icon.
   // var defaultIcon = makeMarkerIcon('0091ff');
@@ -147,7 +149,7 @@ function ViewModel() {
         marker.setAnimation(null);
       }, 1400);
 
-      populateInfoWindow(this, largeInfowindow);
+      populateInfoWindow(this, infoWindow);
     });
     // Two event listeners - one for mouseover, one for mouseout,
     // to change the colors back and forth.
@@ -171,10 +173,10 @@ function ViewModel() {
         });
         return self.locationList();
       } else {
-        if (largeInfowindow.marker !== undefined){
+        if (infoWindow.marker !== undefined){
           //close the info window if its marker doesn't pass the filter
-          if (largeInfowindow.marker.title.indexOf(filter) !== 0){
-            largeInfowindow.close();
+          if (infoWindow.marker.title.indexOf(filter) !== 0){
+            infoWindow.close();
           }
         }
           return ko.utils.arrayFilter(self.locationList(), function(location) {
@@ -196,13 +198,13 @@ function ViewModel() {
   };
 }
 
-// This function populates the infowindow when the marker is clicked. We'll only allow
-// one infowindow which will open at the marker that is clicked, and populate based
+// This function populates the infoWindow when the marker is clicked. We'll only allow
+// one infoWindow which will open at the marker that is clicked, and populate based
 // on that markers position.
-function populateInfoWindow(marker, infowindow) {
-  // Check to make sure the infowindow is not already opened on this marker.
-  //if (infowindow.marker != marker) {
-    infowindow.marker = marker;
+function populateInfoWindow(marker, infoWindow) {
+  // Check to make sure the infoWindow is not already opened on this marker.
+  //if (infoWindow.marker != marker) {
+    infoWindow.marker = marker;
 
       $.ajax({
         url: "https://api.foursquare.com/v2/venues/" + marker.id + "/tips?client_id=BA1MA3SBGKLKEFZKBYVAR0C2FPWY3D31OJ5R0XY5W1OE0K5C&client_secret=IHD1D3YYKVPLDAEVXR05HGYLBWM12ADYFFBOIAYUS5GVJZEF&v=20170810",
@@ -213,23 +215,23 @@ function populateInfoWindow(marker, infowindow) {
         console.log(results.response);
         if (results.response.tips.items[0]){
             var tip = results.response.tips.items[0].text;
-            infowindow.setContent('<div>' + marker.title + '</div><br><div>Top tip: ' + tip + '</div>');
+            infoWindow.setContent('<div>' + marker.title + '</div><br><div>Top tip: ' + tip + '</div>');
       }
 
       else {
-          infowindow.setContent('<div>' + marker.title + '</div><br><div>No tips available</div>');
+          infoWindow.setContent('<div>' + marker.title + '</div><br><div>No tips available</div>');
       }
 
       })
 
       .fail(function(){
-        infowindow.setContent('<div>' + marker.title + '</div><br><div>could not load tip</div>');
+        infoWindow.setContent('<div>' + marker.title + '</div><br><div>could not load tip</div>');
       }); 
     
-    infowindow.open(map, marker);
-    // Make sure the marker property is cleared if the infowindow is closed.
-    infowindow.addListener('closeclick', function() {
-      //infowindow.marker = null;
+    infoWindow.open(map, marker);
+    // Make sure the marker property is cleared if the infoWindow is closed.
+    infoWindow.addListener('closeclick', function() {
+      //infoWindow.marker = null;
     });
 }
 
