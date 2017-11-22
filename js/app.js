@@ -3,11 +3,13 @@ var map;
 // Create a new blank array for all the listing markers.
 var markers = [];
 
+//Wrapper class for location data
 var Location = function(data){
-  this.title = ko.observable(data.title);
-  this.lat = ko.observable(data.location.lat);
-  this.lng = ko.observable(data.location.lng);
-}
+  this.title = data.title;
+  this.lat = data.location.lat;
+  this.lng = data.location.lng;
+  this.id = data.id;
+};
 
 function initMap() {
   // Create a styles array to use with the map.
@@ -80,22 +82,22 @@ function initMap() {
 
   // Constructor creates a new map - only center and zoom are required.
   map = new google.maps.Map(document.getElementById('map'), {
-    center: {lat: 40.7413549, lng: -73.9980244},
-    zoom: 13,
+    center: {lat: 37.6170044, lng: -122.2725621},
+    zoom: 10,
     styles: styles,
     mapTypeControl: false
   });
 
-  ko.applyBindings(new ViewModel);
+  ko.applyBindings(new ViewModel());
 }
 
 function ViewModel() {
   var self = this;
-  self.filter = ko.observable("");
 
+  //filter value is bound to textArea
+  self.filter = ko.observable("");
   self.locationList = ko.observableArray([]);
   
-
   locations.forEach(function(location){
     self.locationList.push(new Location(location));
   });
@@ -103,28 +105,48 @@ function ViewModel() {
   var largeInfowindow = new google.maps.InfoWindow();
 
   // Style the markers a bit. This will be our listing marker icon.
-  var defaultIcon = makeMarkerIcon('0091ff');
+  // var defaultIcon = makeMarkerIcon('0091ff');
+  var defaultIcon = {
+    url: 'images/bluedie.png',
+    //size: new google.maps.Size(34, 34),
+    origin: new google.maps.Point(0, 0),
+    anchor: new google.maps.Point(10, 34),
+    scaledSize: new google.maps.Size(64,64)
+    };
 
   // Create a "highlighted location" marker color for when the user
   // mouses over the marker.
-  var highlightedIcon = makeMarkerIcon('FFFF24');
+  //var highlightedIcon = makeMarkerIcon('FFFF24');
+  var highlightedIcon = {
+    url: 'images/orangedie.png',
+    //size: new google.maps.Size(34, 34),
+    origin: new google.maps.Point(0, 0),
+    anchor: new google.maps.Point(10, 34),
+    scaledSize: new google.maps.Size(64,64)
+    };
 
   self.locationList().forEach(function(location){
-    var position = new google.maps.LatLng(location.lat(), location.lng());
-    var title = location.title();
+    var position = new google.maps.LatLng(location.lat, location.lng);
+    var title = location.title;
+    var id = location.id;
     var marker = new google.maps.Marker({
       map:map,
       position: position,
       title: title,
       animation: google.maps.Animation.DROP,
-      icon: defaultIcon
+      icon: defaultIcon,
+      id: id
     });
 
     location.marker = marker;
-
     markers.push(marker);
 
     marker.addListener('click', function() {
+      marker.setAnimation(google.maps.Animation.BOUNCE);
+      setTimeout(function(){
+        marker.setAnimation(null);
+      }, 1400);
+
       populateInfoWindow(this, largeInfowindow);
     });
     // Two event listeners - one for mouseover, one for mouseout,
@@ -136,10 +158,9 @@ function ViewModel() {
       this.setIcon(defaultIcon);
     });
 
-    self.openWindow = function() {
+    self.triggerClick = function() {
       google.maps.event.trigger(this.marker, 'click');
     };
-
   });
 
   self.filteredLocationList = ko.computed(function() {
@@ -150,62 +171,31 @@ function ViewModel() {
         });
         return self.locationList();
       } else {
-        if (largeInfowindow.marker != null){
+        if (largeInfowindow.marker !== undefined){
           //close the info window if its marker doesn't pass the filter
           if (largeInfowindow.marker.title.indexOf(filter) !== 0){
             largeInfowindow.close();
           }
         }
           return ko.utils.arrayFilter(self.locationList(), function(location) {
-            var startsWith = stringStartsWith(location.title().toLowerCase(), filter);
+            var startsWith = stringStartsWith(location.title.toLowerCase(), filter);
             location.marker.setVisible(startsWith);
             return startsWith;
           });
       }
   }, self);
 
+  self.offScreen = ko.observable(false);
+  self.toggle = function(){
+      self.offScreen(!self.offScreen());
+  };
+
   var stringStartsWith = function (string, startsWith) {
       string = string || "";
       return string.substring(0, startsWith.length) === startsWith;
   };
-
-
-  // The following group uses the location array to create an array of markers on initialize.
-
-  
-  /*for (var i = 0; i < locations.length; i++) {
-    // Get the position from the location array.
-    var position = locations[i].location;
-    var title = locations[i].title;
-    // Create a marker per location, and put into markers array.
-    var marker = new google.maps.Marker({
-      map:map,
-      position: position,
-      title: title,
-      animation: google.maps.Animation.DROP,
-      icon: defaultIcon,
-      id: id
-    });
-    // Push the marker to our array of markers.
-    markers.push(marker);
-    // Create an onclick event to open the large infowindow at each marker.
-    marker.addListener('click', function() {
-      populateInfoWindow(this, largeInfowindow);
-    });
-    // Two event listeners - one for mouseover, one for mouseout,
-    // to change the colors back and forth.
-    marker.addListener('mouseover', function() {
-      this.setIcon(highlightedIcon);
-    });
-    marker.addListener('mouseout', function() {
-      this.setIcon(defaultIcon);
-    });
-  }*/
-
-  // document.getElementById('show-listings').addEventListener('click', showListings);
-  // document.getElementById('hide-listings').addEventListener('click', hideListings);
-
 }
+
 // This function populates the infowindow when the marker is clicked. We'll only allow
 // one infowindow which will open at the marker that is clicked, and populate based
 // on that markers position.
@@ -213,7 +203,29 @@ function populateInfoWindow(marker, infowindow) {
   // Check to make sure the infowindow is not already opened on this marker.
   //if (infowindow.marker != marker) {
     infowindow.marker = marker;
-    infowindow.setContent('<div>' + marker.title + '</div>');
+
+      $.ajax({
+        url: "https://api.foursquare.com/v2/venues/" + marker.id + "/tips?client_id=BA1MA3SBGKLKEFZKBYVAR0C2FPWY3D31OJ5R0XY5W1OE0K5C&client_secret=IHD1D3YYKVPLDAEVXR05HGYLBWM12ADYFFBOIAYUS5GVJZEF&v=20170810",
+        dataType: "jsonp"
+      })
+
+      .done(function(results){
+        console.log(results.response);
+        if (results.response.tips.items[0]){
+            var tip = results.response.tips.items[0].text;
+            infowindow.setContent('<div>' + marker.title + '</div><br><div>Top tip: ' + tip + '</div>');
+      }
+
+      else {
+          infowindow.setContent('<div>' + marker.title + '</div><br><div>No tips available</div>');
+      }
+
+      })
+
+      .fail(function(){
+        infowindow.setContent('<div>' + marker.title + '</div><br><div>could not load tip</div>');
+      }); 
+    
     infowindow.open(map, marker);
     // Make sure the marker property is cleared if the infowindow is closed.
     infowindow.addListener('closeclick', function() {
@@ -230,25 +242,4 @@ function showListings() {
     bounds.extend(markers[i].position);
   }
   map.fitBounds(bounds);
-}
-
-// This function will loop through the listings and hide them all.
-// function hideListings() {
-//   for (var i = 0; i < markers.length; i++) {
-//     markers[i].setMap(null);
-//   }
-// }
-
-// This function takes in a COLOR, and then creates a new marker
-// icon of that color. The icon will be 21 px wide by 34 high, have an origin
-// of 0, 0 and be anchored at 10, 34).
-function makeMarkerIcon(markerColor) {
-  var markerImage = new google.maps.MarkerImage(
-    'http://chart.googleapis.com/chart?chst=d_map_spin&chld=1.15|0|'+ markerColor +
-    '|40|_|%E2%80%A2',
-    new google.maps.Size(21, 34),
-    new google.maps.Point(0, 0),
-    new google.maps.Point(10, 34),
-    new google.maps.Size(21,34));
-  return markerImage;
 }
